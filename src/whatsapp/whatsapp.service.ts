@@ -47,7 +47,7 @@ async function connectToWhatsApp() {
 
         if (qr) {
             QRCode.toDataURL(qr).then((url) => {
-               AppGateway. 
+            //    AppGateway. 
             });
         }
     });
