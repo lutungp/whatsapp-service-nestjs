@@ -6,6 +6,7 @@ import configuration from './config/configuration';
 import { ConfigModule } from '@nestjs/config';
 
 import * as dotenv from 'dotenv';
+import { AppGateway } from './app.gateway';
 
 const ENV = process.env.NODE_ENV;
 dotenv.config({
@@ -22,6 +23,6 @@ dotenv.config({
     }),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, AppGateway],
 })
 export class AppModule {}

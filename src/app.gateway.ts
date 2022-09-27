@@ -8,7 +8,7 @@ import { ClientAuthGuard } from './guards/client.guard';
 
 @WebSocketGateway({ 
     cors: {
-        origin: "http://localhost:8080",
+        origin: "http://localhost:8002",
         credentials: true
     },
     allowEIO3: true 
@@ -38,7 +38,11 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect, OnG
         console.log('Socket is live')
     }
 
-   async sendQrCode(url:string) {
-    
-   }
+    async sendQrCode(data:object) {
+        this.server.emit('whatsappQrCode', data);
+    }
+
+    async connected(data:object) {
+        this.server.emit('connected', data);
+    }
 }

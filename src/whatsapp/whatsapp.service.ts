@@ -3,70 +3,79 @@ import makeWASocket, { DisconnectReason, useSingleFileAuthState } from '@adiwajs
 import { Boom } from '@hapi/boom';
 import { SendMessageDto } from './dto/create-bot.dto';
 import pino from  'pino';
-import { unlinkSync } from 'fs';
+import fs from 'fs'
 
 import * as QRCode from 'qrcode'
 import { AppGateway } from 'src/app.gateway';
-
-let sock: any = false;
-
-async function connectToWhatsApp() {
-    const { state, saveState } = useSingleFileAuthState('./auth_info_multi.json');
-
-    let instance: any = {
-        qr: ''
-    }
-
-    sock = makeWASocket({
-        // can provide additional config here
-        printQRInTerminal: false,
-        browser: ['Whatsapp Darbelink', '', '3.0'],
-        auth: state,
-        logger: pino({
-            level: 'silent',
-        })
-    });
-
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log(DisconnectReason.loggedOut);
-
-            console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect, );
-            // reconnect if not logged out
-            if (shouldReconnect) {
-                console.log('reconnect');
-                connectToWhatsApp();
-            } else {
-                unlinkSync('./auth_info_multi.json');
-            }
-        } else if (connection === 'open') {
-            console.log('opened connection');
-        }
-
-        if (qr) {
-            QRCode.toDataURL(qr).then((url) => {
-            //    AppGateway. 
-            });
-        }
-    });
-
-    sock.ev.on('creds.update', saveState);
-
-    return sock;
-}
-
-function logOut() {
-    unlinkSync('./auth_info_multi.json');
-}
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class WhatsappService {
+
+    constructor(
+        private socketService: AppGateway
+    ){}
+
     bots: any[] = [];
+    sock: any = false;
+    key: string = "";
+    instance = {
+        key: this.key,
+        qr: ''
+    };
+
+    connectToWhatsApp() {
+        const { state, saveState } = useSingleFileAuthState('./auth_info_multi.json');
+        this.instance.key = uuidv4();
+        this.sock = makeWASocket({
+            // can provide additional config here
+            printQRInTerminal: false,
+            browser: ['Whatsapp Darbelink', '', '3.0'],
+            auth: state,
+            logger: pino({
+                level: 'silent',
+            })
+        });
+
+        this.sock.ev.on('connection.update', (update: any) => {
+            const { connection, lastDisconnect, qr } = update;
+            if (connection === 'close') {
+                const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+                console.log(DisconnectReason.loggedOut);
+
+                console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect, );
+                // reconnect if not logged out
+                if (shouldReconnect) {
+                    console.log('reconnect');
+                    this.connectToWhatsApp();
+                } else {
+                    console.log('disconnect')
+                    try {
+                        fs.unlink('./auth_info_multi.json', (err) => {
+                            console.log('err');
+                        });   
+                    } catch (error) {
+                        console.log('error');
+                    }
+                }
+            } else if (connection === 'open') {
+                this.socketService.connected({ user: this.sock });
+            }
+
+            if (qr) {
+                console.log(qr)
+                QRCode.toDataURL(qr).then((url) => {
+                    this.instance.qr = url;
+                    this.socketService.sendQrCode(this.instance);
+                });
+            }
+        });
+
+        this.sock.ev.on('creds.update', saveState);
+    }
 
     async init() {
-        connectToWhatsApp();
+        this.connectToWhatsApp();
     }
 
     async create() {
@@ -105,12 +114,18 @@ export class WhatsappService {
           throw new Error(`Invalid Token`);
         }
     
-        return await sock.sendMessage(`${data.phone}@s.whatsapp.net`, {
+        return await this.sock.sendMessage(`${data.phone}@s.whatsapp.net`, {
           text: data.message,
         });
     }
     
     async logOut() {
-        logOut();
+        try {
+            fs.unlink('./auth_info_multi.json', (err) => {
+                console.log('err');
+            });    
+        } catch (error) {
+            console.log('error');
+        }
     }
 }
