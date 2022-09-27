@@ -5,10 +5,17 @@ import { SendMessageDto } from './dto/create-bot.dto';
 import pino from  'pino';
 import { unlinkSync } from 'fs';
 
+import * as QRCode from 'qrcode'
+import { AppGateway } from 'src/app.gateway';
+
 let sock: any = false;
 
 async function connectToWhatsApp() {
     const { state, saveState } = useSingleFileAuthState('./auth_info_multi.json');
+
+    let instance: any = {
+        qr: ''
+    }
 
     sock = makeWASocket({
         // can provide additional config here
@@ -21,7 +28,7 @@ async function connectToWhatsApp() {
     });
 
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update;
+        const { connection, lastDisconnect, qr } = update;
         if (connection === 'close') {
             const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
             console.log(DisconnectReason.loggedOut);
@@ -36,6 +43,12 @@ async function connectToWhatsApp() {
             }
         } else if (connection === 'open') {
             console.log('opened connection');
+        }
+
+        if (qr) {
+            QRCode.toDataURL(qr).then((url) => {
+               AppGateway. 
+            });
         }
     });
 
@@ -53,7 +66,7 @@ export class WhatsappService {
     bots: any[] = [];
 
     async init() {
-        return connectToWhatsApp();
+        connectToWhatsApp();
     }
 
     async create() {
