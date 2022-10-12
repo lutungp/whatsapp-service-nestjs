@@ -8,7 +8,7 @@ services:
             context: .
             target: development
             dockerfile: ./Dockerfile
-        command: npm run start:debug
+        command: yarn run start:debug
         ports:
             - 3005:3005
             - 9229:9229
@@ -25,7 +25,7 @@ services:
             context: .
             target: production
             dockerfile: ./Dockerfile
-        command: npm run start:prod
+        command: yarn run start:prod
         ports:
             - 3005:3005
             - 9229:9229
